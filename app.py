@@ -65,7 +65,7 @@ Wewe ni **Aura**, mhudumu wa wateja wa kidigitali mwenye **uwezo na akili mnemba
 # ... (Sehemu iliyobaki ya msimbo inabaki kama ilivyo) ...
 
 st.set_page_config(page_title="Aura Chatbot (Gemini Powered)", page_icon="✨")
-st.title("Aura, Msaidizi wa Aqua Softwares ✨")
+st.title("Aura, Msaidizi wa Aqua Softwares ✨usaidizi wa Binaadam:AbdulKarim 0785197876")
 st.caption("Nina uwezo wa kujibu maswali yote kuhusu biashara yako na wateja wako. Naulize chochote!")
 
 # Anzisha historia ya mazungumzo
