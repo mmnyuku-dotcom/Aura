@@ -1,114 +1,108 @@
+# app.py (Msingo wa Streamlit Chatbot)
+
 import streamlit as st
-from groq import Groq
 import os
+from google import genai
+from google.genai.errors import APIError
 
-# ⚠️ ONYO LA USALAMA:
-# API Key imewekwa moja kwa moja. Tumia Secrets kwa uzalishaji (production).
-# IKIWA UNATUMIA STREAMLIT COMMUNITY CLOUD, TAFADHALI TUMIA st.secrets!
-GROQ_API_KEY_DIRECT = "gsk_ZKZbo40DplaX6KDMOj3hWGdyb3FYHdndQNXphO12RfVTnFhQ1wpGG" # NIMEIWEKA GUMZO TU KUEPUKA KOSA LA KUANIKA KEY HAPA
+# --- 1. Usanidi wa API Client na Models ---
 
+# Tofauti na Groq, Gemini hutumia genai.Client
+# Inapendekezwa kutumia st.secrets kwa usalama zaidi.
+# Badilisha 'GEMINI_API_KEY' na jina la ufunguo uliloweka kwenye secrets.toml
+# Kama ulifuata maelekezo, jina linapaswa kuwa 'gemini_api_key'
+GEMINI_API_KEY_NAME = "gemini_api_key"
 
-# --- 1. Usanidi wa API Client (Initialization) ---
+# Angalia kama Key ipo, la sivyo toa ujumbe wa onyo
 try:
+    if GEMINI_API_KEY_NAME in st.secrets:
+        # Pata Key kutoka kwa Streamlit Secrets
+        API_KEY = st.secrets[GEMINI_API_KEY_NAME]
+    else:
+        # Tumia API Key ya mfano, na kisha utoe onyo
+        API_KEY = "AIzaSyD8D5-NrexDxNvCZ4lAh4nEi9T5A9HC9ns"
+        st.error("❌ Kosa: Haujaweka Gemini API Key kwenye faili ya .streamlit/secrets.toml.")
+        st.stop() # Sitisha programu isijaribu kuunganisha bila Key
+
     @st.cache_resource
-    def initialize_groq_client(api_key):
-        return Groq(api_key=api_key)
-        
-    client = initialize_groq_client(GROQ_API_KEY_DIRECT)
+    def initialize_gemini_client(api_key):
+        return genai.Client(api_key=api_key) 
+            
+    client = initialize_gemini_client(API_KEY)
 
 except Exception as e:
-    # Hili litatokea kama API KEY sio sahihi
-    # st.error(f"Kosa wakati wa kuunganisha na Groq: {e}") 
-    # st.stop()
-    pass # Kwa madhumuni ya onyesho hili, tunaiacha iendelee
+    st.error(f"Kosa kubwa wakati wa kuunganisha na Gemini: {e}")
+    st.stop() # Sitisha programu ikiwa uunganisho umefeli
 
+# Usanidi wa Model na System Prompt
+GEMINI_MODEL = "gemini-2.5-flash" 
 
-# --- 2. Ufafanuzi wa Model na System Prompt (IMEIMARISHWA KABISA) ---
-GROQ_MODEL = "llama-3.1-8b-instant"
-SYSTEM_PROMPT = (
-    "Wewe ni Aura, Mhudumu Mkuu wa Wateja wa Kidijitali (Chief Digital Customer Service Officer) mwenye akili bandia (AI) ya hali ya juu sana, mfumo wako uliundwa kwa kutumia miundo mikubwa ya Google na kutekelezwa kwenye Groq."
-    
-    "**Kazi na Uwezo:** Wewe una uwezo wa kuhudumia na kuimarisha biashara na huduma mbalimbali kwa ufanisi wa kipekee, ukizungumza kama mshauri wa biashara. Kazi yako kuu ni kusaidia wafanyabiashara, kama Abdulkarim, kujibu maswali yote ya wateja kwa undani na uaminifu mkubwa. Unafanya **Self-Promotion ya hali ya juu** ya uwezo wako katika kusaidia biashara kwa uhakika."
-    "Una uwezo wa kipekee wa kuweka/kuchukua oda, kupanga miadi, na kumshawishi mteja kwa **mantiki ya kina (deep thinking)**, uelewa wa soko, na uchambuzi makini."
-    
-    "**Mawasiliano na Lugha:** Jibu kwa lugha ya **Kiswahili Sanifu** au **Kiingereza Sanifu** kulingana na lugha anayotumia mteja."
-    "Lazima uwe na **adabu ya hali ya juu sana, heshima, uelewano wa hali ya juu, na utulivu**."
-    "Tumia **lugha ya ucheshi, uchangamfu, na ushawishi** katika majibu yako, na ongeza **emoji (👏✨😊)** pale inapofaa ili kuongeza uhai."
-    
-    "**Uwezo wa Akili Mnemba (Kuepuka Kurudia):**"
-    "1. **KAMWE USIRUDIE maneno, sentensi, au aya yoyote** iliyotajwa kwenye majibu yako ya awali, hasa maelezo ya kazi au uwezo wako. Hii ni muhimu kwa kudumisha ufasaha wa mazungumzo."
-    "2. Tumia **deep thinking** kujibu swali linalofuata kwa kuendeleza mada kwa kina zaidi kutoka pale ulipoishia, na usiweke mambo ya kujitambulisha kila wakati."
-    "3. **Kamwe usisahau maelezo yaliyopita** na taarifa zote za mteja (kama jina lake, Abdulkarim)."
-    
-    "**Mawasiliano ya Dharura ya Kibinadamu:** Ikiwa mteja atahitaji msaada wa kibinadamu au mtu wa kuzungumza naye ana kwa ana, mweleze awasiliane na **Karim** kwa namba hii: **0785197876**."
-)
+SYSTEM_PROMPT = """Wewe ni Aura, msaidizi wa huduma kwa wateja kwa biashara ya mtandaoni iitwayo 'SmartTz'. 
+Jukumu lako ni kutoa majibu ya haraka, sahihi, na ya kirafiki kwa lugha ya Kiswahili fasaha. 
+Jibu maswali yote kwa lugha ya Kiswahili, hata kama maswali yameulizwa kwa lugha nyingine. 
+Weka jibu lako fupi, wazi, na la kusaidia. Jibu kwa heshima na uepuke kuongea kuhusu maswala 
+ambayo si ya biashara. Anza kila jibu kwa salamu fupi ya kirafiki au Emoji moja inayofaa.
+"""
 
-# FAFANUA SALAMU YA KWANZA KAMA KIGEZO CHA KIMATAIFA (GLOBAL CONSTANT) ILI KUZUIA NameError.
-INITIAL_GREETING_CONTENT = (
-    "Habari za wakati huu! Mimi ni Aura, mhudumu wa wateja wa kidijitali mwenye akili mnemba (AI) "
-    "ambaye kazi yake ni kusaidia wafanyabiashara mbalimbali. Nina uwezo wa kujibu maswali yenu yote, "
-    "kuweka oda/miadi, na hata kukushawishi kwa uchangamfu! 😊 "
-    "Tafadhali, ninaweza kukuita nani? Natumai tutafanya kazi nzuri pamoja! ✨"
-)
+# --- 2. Usanidi wa Streamlit UI na Logic ---
 
+st.set_page_config(page_title="Aura Chatbot (Gemini Powered)", page_icon="✨")
+st.title("Aura, Msaidizi wa SmartTz ✨")
+st.caption("Uliza chochote kuhusu bidhaa, maagizo, au usaidizi wetu.")
 
-# --- 3. UI ya Streamlit (User Interface) ---
-st.set_page_config(page_title="🤖 Aura - Customer Service AI")
-st.title("🤖 Aura — Customer Service AI")
-st.write("Karibu! Uliza chochote kuhusu huduma zetu 📞✨")
-
-# Initialize chat history in session state
+# Anzisha historia ya mazungumzo
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    
-    # Ongeza salamu hii kwenye historia ya mazungumzo
-    st.session_state.messages.append({"role": "assistant", "content": INITIAL_GREETING_CONTENT})
 
-
-# Display chat messages from history on app rerun
+# Onyesha historia ya mazungumzo
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-
-# Tumia chat input kwa kupokea ujumbe mpya kutoka kwa mtumiaji
-if prompt := st.chat_input("Andika swali lako hapa..."):
-    
-    # 1. Ongeza ujumbe wa mtumiaji kwenye historia
+# Kichakata cha kuingiza maoni ya mtumiaji
+if prompt := st.chat_input("Nisaidie na..."):
+    # Ongeza maoni ya mtumiaji kwenye historia
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Tengeneza historia ya mazungumzo kwa ajili ya API
-    groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    
-    # Loop kupitia historia ya Streamlit
-    for message in st.session_state.messages:
-        # Punguza salamu ya kwanza (INITIAL_GREETING_CONTENT) kwenye API call 
-        if message["content"] != INITIAL_GREETING_CONTENT: 
-            groq_messages.append(message)
-    
-    # 3. Piga API call kwa Groq
+    # Tayarisha ujumbe kwa ajili ya API ya Gemini
+    # Gemini hutumia 'contents' ambayo hubeba historia yote ya mazungumzo
+    # na inajumuisha jukumu ('role') la kila ujumbe.
+    gemini_contents = [
+        {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+        for m in st.session_state.messages
+    ]
+
+    # 3. Piga API call kwa Gemini
     try:
         with st.chat_message("assistant"):
             with st.spinner("Aura anajibu..."):
-                chat_completion = client.chat.completions.create(
-                    messages=groq_messages,
-                    model=GROQ_MODEL,
-                    temperature=0.7,
+                
+                # Gemini hutumia 'generate_content' kwa chat na system instruction
+                chat_completion = client.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=gemini_contents,
+                    config={
+                        "system_instruction": SYSTEM_PROMPT, 
+                        "temperature": 0.7,
+                    }
                 )
-                response = chat_completion.choices[0].message.content
+                
+                response = chat_completion.text
                 st.markdown(response)
 
-    except Exception as e:
-        # Hapa inahitaji API key iwe sahihi
-        # response = f"Samahani, kumetokea hitilafu katika mfumo wa AI. Tafadhali jaribu tena. Kosa: {e}"
-        # st.markdown(response)
-        
-        # Kwa madhumuni ya onyesho, tunarudisha ujumbe wa makosa wa kirafiki 
-        # badala ya kuzuia programu kabisa
-        response = f"Nakuomba radhi Abdulkarim, mfumo wangu wa akili mnemba (API) una changamoto kwa sasa. Jaribu tena baada ya muda mfupi. ✨"
+    except APIError as e:
+        # Simamia makosa ya Gemini API (kama API Key Invalid au Rate Limit)
+        response = f"Nakuomba radhi Abdulkarim, mfumo wa Gemini una changamoto kwa sasa (API Error). Tafadhali hakikisha Key yako ni sahihi na hukuweka 'Cloud Billing'. Kosa hasa: {e}"
         st.markdown(response)
+        
+    except Exception as e:
+        # Simamia makosa mengine ya mfumo
+        response = f"Samahani, kumetokea kosa lisilotarajiwa: {e}" 
+        st.markdown(response)
+
 
     # 4. Ongeza jibu la Aura kwenye historia ya mazungumzo ya Streamlit
     st.session_state.messages.append({"role": "assistant", "content": response})
+
