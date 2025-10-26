@@ -1,38 +1,35 @@
-# app.py (Msingo wa Streamlit Chatbot)
+# app.py (Msingo wa Streamlit Chatbot - Imetengenezwa kwa ajili ya Render)
 
 import streamlit as st
-import os
+import os # Huu unatumika kusoma Environment Variables kutoka Render
 from google import genai
 from google.genai.errors import APIError
 
 # --- 1. Usanidi wa API Client na Models ---
 
-# Tofauti na Groq, Gemini hutumia genai.Client
-# Inapendekezwa kutumia st.secrets kwa usalama zaidi.
-# Badilisha 'GEMINI_API_KEY' na jina la ufunguo uliloweka kwenye secrets.toml
-# Kama ulifuata maelekezo, jina linapaswa kuwa 'gemini_api_key'
-GEMINI_API_KEY_NAME = "gemini_api_key"
+# Jina la Environment Variable utakayoweka kwenye dashibodi ya Render.
+RENDER_ENV_VAR_NAME = "GEMINI_API_KEY_RENDER" 
 
-# Angalia kama Key ipo, la sivyo toa ujumbe wa onyo
 try:
-    if GEMINI_API_KEY_NAME in st.secrets:
-        # Pata Key kutoka kwa Streamlit Secrets
-        API_KEY = st.secrets[GEMINI_API_KEY_NAME]
-    else:
-        # Tumia API Key ya mfano, na kisha utoe onyo
-        API_KEY = "AIzaSyD8D5-NrexDxNvCZ4lAh4nEi9T5A9HC9ns"
-        st.error("❌ Kosa: Haujaweka Gemini API Key kwenye faili ya .streamlit/secrets.toml.")
-        st.stop() # Sitisha programu isijaribu kuunganisha bila Key
+    # Soma API Key moja kwa moja kutoka kwenye Environment Variables za Render
+    API_KEY = os.environ.get(RENDER_ENV_VAR_NAME)
 
+    if not API_KEY:
+        # Toa onyo wazi kwa mtumiaji wa programu (wewe) kama Key haijapatikana
+        st.error(f"❌ Kosa: Key ya Gemini haijapatikana. Tafadhali weka Environment Variable iitwayo '{RENDER_ENV_VAR_NAME}' yenye API Key yako kwenye dashibodi ya Render.")
+        st.stop()
+        
     @st.cache_resource
     def initialize_gemini_client(api_key):
+        # Anzisha client ya Gemini kwa kutumia Key iliyopatikana
         return genai.Client(api_key=api_key) 
             
     client = initialize_gemini_client(API_KEY)
 
 except Exception as e:
+    # Simamia makosa yote yanayotokea wakati wa kuunganisha
     st.error(f"Kosa kubwa wakati wa kuunganisha na Gemini: {e}")
-    st.stop() # Sitisha programu ikiwa uunganisho umefeli
+    st.stop()
 
 # Usanidi wa Model na System Prompt
 GEMINI_MODEL = "gemini-2.5-flash" 
@@ -67,8 +64,6 @@ if prompt := st.chat_input("Nisaidie na..."):
         st.markdown(prompt)
 
     # Tayarisha ujumbe kwa ajili ya API ya Gemini
-    # Gemini hutumia 'contents' ambayo hubeba historia yote ya mazungumzo
-    # na inajumuisha jukumu ('role') la kila ujumbe.
     gemini_contents = [
         {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
         for m in st.session_state.messages
@@ -79,7 +74,6 @@ if prompt := st.chat_input("Nisaidie na..."):
         with st.chat_message("assistant"):
             with st.spinner("Aura anajibu..."):
                 
-                # Gemini hutumia 'generate_content' kwa chat na system instruction
                 chat_completion = client.models.generate_content(
                     model=GEMINI_MODEL,
                     contents=gemini_contents,
@@ -94,7 +88,7 @@ if prompt := st.chat_input("Nisaidie na..."):
 
     except APIError as e:
         # Simamia makosa ya Gemini API (kama API Key Invalid au Rate Limit)
-        response = f"Nakuomba radhi Abdulkarim, mfumo wa Gemini una changamoto kwa sasa (API Error). Tafadhali hakikisha Key yako ni sahihi na hukuweka 'Cloud Billing'. Kosa hasa: {e}"
+        response = f"Nakuomba radhi, mfumo wa Gemini una changamoto kwa sasa (API Error). Tafadhali hakikisha Key yako ni sahihi. Kosa hasa: {e}"
         st.markdown(response)
         
     except Exception as e:
@@ -105,4 +99,3 @@ if prompt := st.chat_input("Nisaidie na..."):
 
     # 4. Ongeza jibu la Aura kwenye historia ya mazungumzo ya Streamlit
     st.session_state.messages.append({"role": "assistant", "content": response})
-
