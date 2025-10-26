@@ -3,15 +3,12 @@ from groq import Groq
 import os
 
 # ⚠️ ONYO LA USALAMA:
-# Hii inarekebishwa kulingana na ombi lako la kuingiza API Key moja kwa moja.
-# Njia hii haipendekezwi kwa code ya uzalishaji (production code) au code inayowekwa kwenye GitHub
-# kwa sababu inaweka wazi ufunguo wako.
+# API Key imewekwa moja kwa moja. Tumia Secrets kwa uzalishaji (production).
 GROQ_API_KEY_DIRECT = "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"
 
 
 # --- 1. Usanidi wa API Client (Initialization) ---
 try:
-    # Tunatumia ufunguo ulioingizwa moja kwa moja
     client = Groq(api_key=GROQ_API_KEY_DIRECT)
 
 except Exception as e:
@@ -20,7 +17,8 @@ except Exception as e:
 
 
 # --- 2. Ufafanuzi wa Model na System Prompt ---
-GROQ_MODEL = "llama3-8b-8192"
+# Mfumo UMEBADILISHWA: Kutoka llama3-8b-8192 hadi llama-3.1-8b-instant
+GROQ_MODEL = "llama-3.1-8b-instant"
 SYSTEM_PROMPT = "Wewe ni Aura, msaidizi rafiki wa huduma kwa wateja. Jibu maswali yote kwa lugha ya Kiswahili, kwa kutumia lugha rahisi na yenye heshima. Lengo lako ni kutoa majibu sahihi na kusaidia kwa furaha."
 
 
@@ -43,26 +41,24 @@ for message in st.session_state.messages:
 def get_groq_response(prompt):
     """Hutuma ujumbe kwa Groq API na kurudisha jibu."""
     
-    # Jenga orodha ya ujumbe ikijumuisha system prompt na historia ya chat
     messages_for_api = [
         {"role": "system", "content": SYSTEM_PROMPT},
     ]
-    # Ongeza ujumbe wote wa sasa kutoka kwa session state, ukiondoa system prompt
     for msg in st.session_state.messages:
         messages_for_api.append(msg)
     
-    # Ongeza ujumbe wa mtumiaji wa sasa
     messages_for_api.append({"role": "user", "content": prompt})
 
     try:
         completion = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=messages_for_api,
-            temperature=0.7 # Unaweza kurekebisha hii
+            temperature=0.7
         )
         return completion.choices[0].message.content
         
     except Exception as e:
+        # Hii ni muhimu, inasaidia kupata kosa halisi ikiwa kuna kosa lingine
         return f"Samahani, kosa limetokea wakati wa kupata jibu: {e}"
 
 
@@ -82,4 +78,3 @@ if user_input := st.chat_input("✍️ Andika ujumbe wako hapa:"):
 
     # 3. Hifadhi jibu la AI kwenye historia
     st.session_state.messages.append({"role": "assistant", "content": response})
-
