@@ -4,6 +4,7 @@ import os
 
 # ⚠️ ONYO LA USALAMA:
 # API Key imewekwa moja kwa moja. Tumia Secrets kwa uzalishaji (production).
+# IKIWA UNATUMIA STREAMLIT COMMUNITY CLOUD, TAFADHALI TUMIA st.secrets!
 GROQ_API_KEY_DIRECT = "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"
 
 
@@ -21,7 +22,7 @@ except Exception as e:
     st.stop()
 
 
-# --- 2. Ufafanuzi wa Model na System Prompt (IMEBADILISHWA KAMA ULIVYOOMBA) ---
+# --- 2. Ufafanuzi wa Model na System Prompt ---
 GROQ_MODEL = "llama-3.1-8b-instant"
 SYSTEM_PROMPT = (
     "Wewe ni Aura, mhudumu wa wateja wa kidijitali mwenye akili bandia (AI) na mfumo wa akili mnemba."
@@ -42,6 +43,14 @@ SYSTEM_PROMPT = (
     "Ikiwa mteja atahitaji msaada wa kibinadamu au mtu wa kuzungumza naye ana kwa ana, mweleze awasiliane na **Karim** kwa namba hii: **0785197876**."
 )
 
+# FAFANUA SALAMU YA KWANZA KAMA KIGEZO CHA KIMATAIFA (GLOBAL CONSTANT) ILI KUZUIA NameError.
+INITIAL_GREETING_CONTENT = (
+    "Habari za wakati huu! Mimi ni Aura, mhudumu wa wateja wa kidijitali mwenye akili mnemba (AI) "
+    "ambaye kazi yake ni kusaidia wafanyabiashara mbalimbali. Nina uwezo wa kujibu maswali yenu yote, "
+    "kuweka oda/miadi, na hata kukushawishi kwa uchangamfu! 😊 "
+    "Tafadhali, ninaweza kukuita nani? Natumai tutafanya kazi nzuri pamoja! ✨"
+)
+
 
 # --- 3. UI ya Streamlit (User Interface) ---
 st.set_page_config(page_title="🤖 Aura - Customer Service AI")
@@ -52,15 +61,8 @@ st.write("Karibu! Uliza chochote kuhusu huduma zetu 📞✨")
 if "messages" not in st.session_state:
     st.session_state.messages = []
     
-    # NEW: Ongeza salamu ya kwanza ya Aura (Initial Greeting)
-    initial_greeting = (
-        "Habari za wakati huu! Mimi ni Aura, mhudumu wa wateja wa kidijitali mwenye akili mnemba (AI) "
-        "ambaye kazi yake ni kusaidia wafanyabiashara mbalimbali. Nina uwezo wa kujibu maswali yenu yote, "
-        "kuweka oda/miadi, na hata kukushawishi kwa uchangamfu! 😊 "
-        "Tafadhali, ninaweza kukuita nani? Natumai tutafanya kazi nzuri pamoja! ✨"
-    )
     # Ongeza salamu hii kwenye historia ya mazungumzo
-    st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
+    st.session_state.messages.append({"role": "assistant", "content": INITIAL_GREETING_CONTENT})
 
 
 # Display chat messages from history on app rerun
@@ -79,9 +81,12 @@ if prompt := st.chat_input("Andika swali lako hapa..."):
 
     # 2. Tengeneza historia ya mazungumzo kwa ajili ya API
     groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    
+    # Loop kupitia historia ya Streamlit
     for message in st.session_state.messages:
-        # Punguza salamu ya kwanza ili isirudiwe kwenye API call
-        if message["content"] != initial_greeting: 
+        # Punguza salamu ya kwanza (INITIAL_GREETING_CONTENT) kwenye API call 
+        # ili kuzuia kutoa maelezo yasiyo ya lazima kwa LLM kila wakati
+        if message["content"] != INITIAL_GREETING_CONTENT: 
             groq_messages.append(message)
     
     # 3. Piga API call kwa Groq
@@ -91,7 +96,7 @@ if prompt := st.chat_input("Andika swali lako hapa..."):
                 chat_completion = client.chat.completions.create(
                     messages=groq_messages,
                     model=GROQ_MODEL,
-                    temperature=0.7, # Joto la wastani kwa ubunifu na usahihi
+                    temperature=0.7,
                 )
                 response = chat_completion.choices[0].message.content
                 st.markdown(response)
@@ -102,4 +107,3 @@ if prompt := st.chat_input("Andika swali lako hapa..."):
 
     # 4. Ongeza jibu la Aura kwenye historia ya mazungumzo ya Streamlit
     st.session_state.messages.append({"role": "assistant", "content": response})
-
