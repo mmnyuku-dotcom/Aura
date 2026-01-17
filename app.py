@@ -65,8 +65,8 @@ Wewe ni **Coty**, mhudumu wa wateja wa kidigitali mwenye **uwezo na akili mnemba
 # ... (Sehemu iliyobaki ya msimbo inabaki kama ilivyo) ...
 
 st.set_page_config(page_title="Aura Chatbot (Gemini Powered)", page_icon="✨")
-st.title("Aura, Msaidizi wa Aqua Softwares ✨usaidizi wa Binaadam:AbdulKarim 0785197876")
-st.caption("Nina uwezo wa kujibu maswali yote kuhusu biashara yako na wateja wako. Naulize chochote!")
+st.title("Karibu Coty Butchery")
+st.caption("mtoa huduma wa haraka zaidi wa kidigitali!")
 
 # Anzisha historia ya mazungumzo
 if "messages" not in st.session_state:
@@ -78,7 +78,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Kichakata cha kuingiza maoni ya mtumiaji
-if prompt := st.chat_input("Naomba nisaidiwe na..."):
+if prompt := st.chat_input("Uliza swali lako hapa"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
